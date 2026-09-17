@@ -15,3 +15,37 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
     <artifactId>maven-surefire-plugin</artifactId><version>3.2.5</version>
   </plugin></plugins></build>
 </project>
+
+
+package com.vit.smartstudent.model;
+
+public class Student {
+    private String id;
+    private String name;
+    private String email;
+    private String branch;
+    private int semester;
+
+    public Student(String id, String name, String email, String branch, int semester) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.branch = branch;
+        this.semester = semester;
+    }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getBranch() { return branch; }
+    public void setBranch(String branch) { this.branch = branch; }
+    public int getSemester() { return semester; }
+    public void setSemester(int semester) { this.semester = semester; }
+
+    public String toCsv() {
+        return String.format("%s,%s,%s,%s,%d", id, name, email, branch, semester);
+    }
+}
