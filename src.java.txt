@@ -1,0 +1,813 @@
+Write-Host "Creating project directories..." -ForegroundColor Cyan
+New-Item -ItemType Directory -Force -Path "src\main\java\com\vit\smartstudent\model" | Out-Null
+New-Item -ItemType Directory -Force -Path "src\main\java\com\vit\smartstudent\service" | Out-Null
+New-Item -ItemType Directory -Force -Path "src\main\java\com\vit\smartstudent\util" | Out-Null
+New-Item -ItemType Directory -Force -Path "src\test\java\com\vit\smartstudent" | Out-Null
+New-Item -ItemType Directory -Force -Path "data" | Out-Null
+
+Write-Host "Writing data CSV files..." -ForegroundColor Cyan
+@"
+id,name,email,branch,semester
+25BAI11093,Sunny Gupta,sunny.gupta2025@vitbhopal.ac.in,AIML,2
+25BCE10042,Rohan Varma,rohan.varma2025@vitbhopal.ac.in,CSE,2
+"@ | Out-File -Encoding utf8 -FilePath "data\students.csv"
+
+@"
+code,name,credits
+CSE1021,Programming in Java,4
+MAT2002,Discrete Mathematics,4
+CSE2001,Data Structures and Algorithms,4
+"@ | Out-File -Encoding utf8 -FilePath "data\courses.csv"
+
+@"
+studentId,courseCode,marks
+25BAI11093,CSE1021,94.0
+25BAI11093,MAT2002,88.5
+25BAI11093,CSE2001,91.0
+25BCE10042,CSE1021,82.0
+"@ | Out-File -Encoding utf8 -FilePath "data\marks.csv"
+
+@"
+studentId,courseCode,attended,total
+25BAI11093,CSE1021,28,30
+25BAI11093,MAT2002,27,30
+25BAI11093,CSE2001,29,30
+25BCE10042,CSE1021,25,30
+"@ | Out-File -Encoding utf8 -FilePath "data\attendance.csv"
+
+Write-Host "Writing Java model files..." -ForegroundColor Cyan
+@"
+package com.vit.smartstudent.model;
+
+public class Student {
+    private String id;
+    private String name;
+    private String email;
+    private String branch;
+    private int semester;
+
+    public Student(String id, String name, String email, String branch, int semester) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.branch = branch;
+        this.semester = semester;
+    }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getBranch() { return branch; }
+    public void setBranch(String branch) { this.branch = branch; }
+    public int getSemester() { return semester; }
+    public void setSemester(int semester) { this.semester = semester; }
+
+    public String toCsv() {
+        return String.format("%s,%s,%s,%s,%d", id, name, email, branch, semester);
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\model\Student.java"
+
+@"
+package com.vit.smartstudent.model;
+
+public class Course {
+    private String code;
+    private String name;
+    private int credits;
+
+    public Course(String code, String name, int credits) {
+        this.code = code;
+        this.name = name;
+        this.credits = credits;
+    }
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public int getCredits() { return credits; }
+    public void setCredits(int credits) { this.credits = credits; }
+
+    public String toCsv() {
+        return String.format("%s,%s,%d", code, name, credits);
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\model\Course.java"
+
+@"
+package com.vit.smartstudent.model;
+
+public class MarkRecord {
+    private String studentId;
+    private String courseCode;
+    private double marks;
+
+    public MarkRecord(String studentId, String courseCode, double marks) {
+        this.studentId = studentId;
+        this.courseCode = courseCode;
+        this.marks = marks;
+    }
+
+    public String getStudentId() { return studentId; }
+    public String getCourseCode() { return courseCode; }
+    public double getMarks() { return marks; }
+    public void setMarks(double marks) { this.marks = marks; }
+
+    public String toCsv() {
+        return String.format("%s,%s,%.2f", studentId, courseCode, marks);
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\model\MarkRecord.java"
+
+@"
+package com.vit.smartstudent.model;
+
+public class AttendanceRecord {
+    private String studentId;
+    private String courseCode;
+    private int attended;
+    private int total;
+
+    public AttendanceRecord(String studentId, String courseCode, int attended, int total) {
+        this.studentId = studentId;
+        this.courseCode = courseCode;
+        this.attended = attended;
+        this.total = total;
+    }
+
+    public String getStudentId() { return studentId; }
+    public String getCourseCode() { return courseCode; }
+    public int getAttended() { return attended; }
+    public int getTotal() { return total; }
+
+    public void updateAttendance(int attended, int total) {
+        this.attended = attended;
+        this.total = total;
+    }
+
+    public double getPercentage() {
+        if (total == 0) return 100.0;
+        return ((double) attended / total) * 100.0;
+    }
+
+    public String toCsv() {
+        return String.format("%s,%s,%d,%d", studentId, courseCode, attended, total);
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\model\AttendanceRecord.java"
+
+Write-Host "Writing validation utility..." -ForegroundColor Cyan
+@"
+package com.vit.smartstudent.util;
+
+import java.util.regex.Pattern;
+
+public class InputValidator {
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$");
+    private static final Pattern ID_PATTERN = Pattern.compile("^[0-9]{2}[A-Za-z]{3}[0-9]{4,5}$");
+
+    public static boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
+    }
+
+    public static boolean isValidId(String id) {
+        return id != null && ID_PATTERN.matcher(id.trim()).matches();
+    }
+
+    public static boolean isValidMarks(double marks) {
+        return marks >= 0.0 && marks <= 100.0;
+    }
+
+    public static boolean isValidAttendance(int attended, int total) {
+        return total >= 0 && attended >= 0 && attended <= total;
+    }
+
+    public static boolean isValidSemester(int sem) {
+        return sem >= 1 && sem <= 10;
+    }
+
+    public static boolean isValidCredits(int credits) {
+        return credits >= 1 && credits <= 8;
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\util\InputValidator.java"
+
+Write-Host "Writing services and DataStore..." -ForegroundColor Cyan
+@"
+package com.vit.smartstudent.service;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class DataStore {
+    private static final String DATA_DIR = "data";
+
+    public static void ensureDataDirectory() {
+        File dir = new File(DATA_DIR);
+        if (!dir.exists()) dir.mkdirs();
+    }
+
+    public static List<String> readLines(String fileName) {
+        ensureDataDirectory();
+        Path path = Paths.get(DATA_DIR, fileName);
+        if (!Files.exists(path)) return new ArrayList<>();
+        try {
+            return Files.readAllLines(path);
+        } catch (IOException e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public static void writeLines(String fileName, List<String> lines) {
+        ensureDataDirectory();
+        Path path = Paths.get(DATA_DIR, fileName);
+        try {
+            Files.write(path, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException ignored) {}
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\service\DataStore.java"
+
+@"
+package com.vit.smartstudent.service;
+
+import com.vit.smartstudent.model.Student;
+import com.vit.smartstudent.util.InputValidator;
+import java.util.*;
+
+public class StudentService {
+    private final List<Student> students = new ArrayList<>();
+    private final String fileName = "students.csv";
+
+    public StudentService() { loadData(); }
+
+    private void loadData() {
+        List<String> lines = DataStore.readLines(fileName);
+        students.clear();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i == 0 && lines.get(i).startsWith("id,")) continue;
+            String[] parts = lines.get(i).split(",");
+            if (parts.length == 5) {
+                students.add(new Student(parts[0].trim(), parts[1].trim(), parts[2].trim(), 
+                                         parts[3].trim(), Integer.parseInt(parts[4].trim())));
+            }
+        }
+    }
+
+    public void saveData() {
+        List<String> lines = new ArrayList<>();
+        lines.add("id,name,email,branch,semester");
+        for (Student s : students) lines.add(s.toCsv());
+        DataStore.writeLines(fileName, lines);
+    }
+
+    public boolean addStudent(Student student) {
+        if (findStudent(student.getId()).isPresent()) return false;
+        students.add(student);
+        saveData();
+        return true;
+    }
+
+    public Optional<Student> findStudent(String id) {
+        return students.stream().filter(s -> s.getId().equalsIgnoreCase(id.trim())).findFirst();
+    }
+
+    public List<Student> getAllStudents() { return new ArrayList<>(students); }
+
+    public boolean updateStudent(String id, String name, String email, String branch, int sem) {
+        Optional<Student> opt = findStudent(id);
+        if (opt.isPresent()) {
+            Student s = opt.get();
+            if (name != null && !name.isBlank()) s.setName(name.trim());
+            if (email != null && InputValidator.isValidEmail(email)) s.setEmail(email.trim());
+            if (branch != null && !branch.isBlank()) s.setBranch(branch.trim());
+            if (InputValidator.isValidSemester(sem)) s.setSemester(sem);
+            saveData();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean deleteStudent(String id) {
+        boolean removed = students.removeIf(s -> s.getId().equalsIgnoreCase(id.trim()));
+        if (removed) saveData();
+        return removed;
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\service\StudentService.java"
+
+@"
+package com.vit.smartstudent.service;
+
+import com.vit.smartstudent.model.Course;
+import java.util.*;
+
+public class CourseService {
+    private final List<Course> courses = new ArrayList<>();
+    private final String fileName = "courses.csv";
+
+    public CourseService() { loadData(); }
+
+    private void loadData() {
+        List<String> lines = DataStore.readLines(fileName);
+        courses.clear();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i == 0 && lines.get(i).startsWith("code,")) continue;
+            String[] p = lines.get(i).split(",");
+            if (p.length == 3) {
+                courses.add(new Course(p[0].trim(), p[1].trim(), Integer.parseInt(p[2].trim())));
+            }
+        }
+    }
+
+    public void saveData() {
+        List<String> lines = new ArrayList<>();
+        lines.add("code,name,credits");
+        for (Course c : courses) lines.add(c.toCsv());
+        DataStore.writeLines(fileName, lines);
+    }
+
+    public boolean addCourse(Course course) {
+        if (findCourse(course.getCode()).isPresent()) return false;
+        courses.add(course);
+        saveData();
+        return true;
+    }
+
+    public Optional<Course> findCourse(String code) {
+        return courses.stream().filter(c -> c.getCode().equalsIgnoreCase(code.trim())).findFirst();
+    }
+
+    public List<Course> getAllCourses() { return new ArrayList<>(courses); }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\service\CourseService.java"
+
+@"
+package com.vit.smartstudent.service;
+
+import com.vit.smartstudent.model.AttendanceRecord;
+import com.vit.smartstudent.model.MarkRecord;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class AcademicService {
+    private final List<MarkRecord> marks = new ArrayList<>();
+    private final List<AttendanceRecord> attendanceList = new ArrayList<>();
+    private final String marksFile = "marks.csv";
+    private final String attendanceFile = "attendance.csv";
+
+    public AcademicService() {
+        loadMarks();
+        loadAttendance();
+    }
+
+    private void loadMarks() {
+        List<String> lines = DataStore.readLines(marksFile);
+        marks.clear();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i == 0 && lines.get(i).startsWith("studentId,")) continue;
+            String[] p = lines.get(i).split(",");
+            if (p.length == 3) {
+                marks.add(new MarkRecord(p[0].trim(), p[1].trim(), Double.parseDouble(p[2].trim())));
+            }
+        }
+    }
+
+    private void loadAttendance() {
+        List<String> lines = DataStore.readLines(attendanceFile);
+        attendanceList.clear();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i == 0 && lines.get(i).startsWith("studentId,")) continue;
+            String[] p = lines.get(i).split(",");
+            if (p.length == 4) {
+                attendanceList.add(new AttendanceRecord(p[0].trim(), p[1].trim(), 
+                                   Integer.parseInt(p[2].trim()), Integer.parseInt(p[3].trim())));
+            }
+        }
+    }
+
+    public void saveMarks() {
+        List<String> lines = new ArrayList<>();
+        lines.add("studentId,courseCode,marks");
+        for (MarkRecord m : marks) lines.add(m.toCsv());
+        DataStore.writeLines(marksFile, lines);
+    }
+
+    public void saveAttendance() {
+        List<String> lines = new ArrayList<>();
+        lines.add("studentId,courseCode,attended,total");
+        for (AttendanceRecord a : attendanceList) lines.add(a.toCsv());
+        DataStore.writeLines(attendanceFile, lines);
+    }
+
+    public void recordMarks(String studentId, String courseCode, double score) {
+        Optional<MarkRecord> existing = marks.stream()
+                .filter(m -> m.getStudentId().equalsIgnoreCase(studentId) && 
+                             m.getCourseCode().equalsIgnoreCase(courseCode))
+                .findFirst();
+        if (existing.isPresent()) {
+            existing.get().setMarks(score);
+        } else {
+            marks.add(new MarkRecord(studentId, courseCode, score));
+        }
+        saveMarks();
+    }
+
+    public void recordAttendance(String studentId, String courseCode, int attended, int total) {
+        Optional<AttendanceRecord> existing = attendanceList.stream()
+                .filter(a -> a.getStudentId().equalsIgnoreCase(studentId) && 
+                             a.getCourseCode().equalsIgnoreCase(courseCode))
+                .findFirst();
+        if (existing.isPresent()) {
+            existing.get().updateAttendance(attended, total);
+        } else {
+            attendanceList.add(new AttendanceRecord(studentId, courseCode, attended, total));
+        }
+        saveAttendance();
+    }
+
+    public List<MarkRecord> getStudentMarks(String studentId) {
+        return marks.stream().filter(m -> m.getStudentId().equalsIgnoreCase(studentId)).collect(Collectors.toList());
+    }
+
+    public List<AttendanceRecord> getStudentAttendance(String studentId) {
+        return attendanceList.stream().filter(a -> a.getStudentId().equalsIgnoreCase(studentId)).collect(Collectors.toList());
+    }
+
+    public List<MarkRecord> getAllMarks() { return marks; }
+    public List<AttendanceRecord> getAllAttendance() { return attendanceList; }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\service\AcademicService.java"
+
+@"
+package com.vit.smartstudent.service;
+
+import com.vit.smartstudent.model.*;
+import java.util.*;
+
+public class ReportService {
+    private final StudentService studentService;
+    private final CourseService courseService;
+    private final AcademicService academicService;
+
+    public ReportService(StudentService ss, CourseService cs, AcademicService as) {
+        this.studentService = ss;
+        this.courseService = cs;
+        this.academicService = as;
+    }
+
+    public void printStudentReport(String studentId) {
+        Optional<Student> studentOpt = studentService.findStudent(studentId);
+        if (studentOpt.isEmpty()) {
+            System.out.println("\n[!] Student not found with ID: " + studentId);
+            return;
+        }
+
+        Student s = studentOpt.get();
+        List<MarkRecord> marks = academicService.getStudentMarks(s.getId());
+        List<AttendanceRecord> attendances = academicService.getStudentAttendance(s.getId());
+
+        System.out.println("\n======================================================================");
+        System.out.println("                     STUDENT PERFORMANCE REPORT                      ");
+        System.out.println("======================================================================");
+        System.out.printf("Student Name : %-25s Registration No : %s\n", s.getName(), s.getId());
+        System.out.printf("Branch       : %-25s Semester        : %d\n", s.getBranch(), s.getSemester());
+        System.out.println("----------------------------------------------------------------------");
+        System.out.printf("%-10s %-30s %-8s %-15s %s\n", "Code", "Course Title", "Marks", "Attendance", "Status");
+        System.out.println("----------------------------------------------------------------------");
+
+        double totalMarks = 0;
+        int markCount = 0;
+        double totalAttended = 0;
+        double totalLectures = 0;
+
+        for (MarkRecord mr : marks) {
+            String title = courseService.findCourse(mr.getCourseCode()).map(Course::getName).orElse("Unknown Course");
+            Optional<AttendanceRecord> ar = attendances.stream().filter(a -> a.getCourseCode().equalsIgnoreCase(mr.getCourseCode())).findFirst();
+
+            String attStr = "N/A";
+            if (ar.isPresent()) {
+                attStr = String.format("%d/%d (%.1f%%)", ar.get().getAttended(), ar.get().getTotal(), ar.get().getPercentage());
+                totalAttended += ar.get().getAttended();
+                totalLectures += ar.get().getTotal();
+            }
+
+            String status = mr.getMarks() >= 50.0 ? "PASS" : "FAIL";
+            System.out.printf("%-10s %-30s %-8.2f %-15s %s\n", mr.getCourseCode(), title, mr.getMarks(), attStr, status);
+            totalMarks += mr.getMarks();
+            markCount++;
+        }
+
+        System.out.println("----------------------------------------------------------------------");
+        double avgMarks = markCount > 0 ? totalMarks / markCount : 0.0;
+        double overallAtt = totalLectures > 0 ? (totalAttended / totalLectures) * 100.0 : 100.0;
+
+        System.out.printf("Cumulative Average Marks : %.2f / 100\n", avgMarks);
+        System.out.printf("Overall Attendance Rate  : %.2f%%\n", overallAtt);
+        
+        String distinction = "Passing";
+        if (avgMarks >= 90.0) distinction = "First Class with Distinction (Honors)";
+        else if (avgMarks >= 75.0) distinction = "First Class";
+        else if (avgMarks < 50.0) distinction = "Academic Probation Alert";
+
+        System.out.println("Academic Distinction     : " + distinction);
+        System.out.println("Eligibility Status       : " + (overallAtt >= 75.0 ? "Eligible for End-Term Examinations" : "DEBARRED (Low Attendance)"));
+        System.out.println("======================================================================\n");
+    }
+
+    public void printClassSummary() {
+        List<Student> students = studentService.getAllStudents();
+        List<MarkRecord> marks = academicService.getAllMarks();
+        List<AttendanceRecord> attList = academicService.getAllAttendance();
+
+        System.out.println("\n======================================================================");
+        System.out.println("                         CLASS COHORT SUMMARY                         ");
+        System.out.println("======================================================================");
+        System.out.printf("Total Enrolled Students : %d\n", students.size());
+        System.out.printf("Total Graded Entries    : %d\n", marks.size());
+        
+        double avgClassMark = marks.stream().mapToDouble(MarkRecord::getMarks).average().orElse(0.0);
+        double avgClassAtt = attList.stream().mapToDouble(AttendanceRecord::getPercentage).average().orElse(100.0);
+
+        System.out.printf("Class Average Marks     : %.2f / 100\n", avgClassMark);
+        System.out.printf("Class Mean Attendance   : %.2f%%\n", avgClassAtt);
+        System.out.println("======================================================================\n");
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\service\ReportService.java"
+
+Write-Host "Writing Main entrypoint..." -ForegroundColor Cyan
+@"
+package com.vit.smartstudent;
+
+import com.vit.smartstudent.model.Course;
+import com.vit.smartstudent.model.Student;
+import com.vit.smartstudent.service.*;
+import com.vit.smartstudent.util.InputValidator;
+import java.util.List;
+import java.util.Scanner;
+
+public class Main {
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final StudentService studentService = new StudentService();
+    private static final CourseService courseService = new CourseService();
+    private static final AcademicService academicService = new AcademicService();
+    private static final ReportService reportService = new ReportService(studentService, courseService, academicService);
+
+    public static void main(String[] args) {
+        boolean exit = false;
+        while (!exit) {
+            displayMenu();
+            System.out.print("Enter choice: ");
+            String choice = scanner.nextLine().trim();
+            switch (choice) {
+                case "1" -> addStudent();
+                case "2" -> listStudents();
+                case "3" -> updateStudent();
+                case "4" -> deleteStudent();
+                case "5" -> addCourse();
+                case "6" -> listCourses();
+                case "7" -> recordMarks();
+                case "8" -> recordAttendance();
+                case "9" -> generateReport();
+                case "10" -> reportService.printClassSummary();
+                case "0" -> {
+                    System.out.println("Exiting Smart Student Performance Manager. Goodbye!");
+                    exit = true;
+                }
+                default -> System.out.println("[!] Invalid option. Please select 0 through 10.");
+            }
+        }
+    }
+
+    private static void displayMenu() {
+        System.out.println("""
+        ======================================================================
+                         SMART STUDENT PERFORMANCE MANAGER                   
+                       VIT Bhopal - Programming in Java Project              
+        ======================================================================
+        1. Add Student               6. List Courses
+        2. List Students             7. Record/Update Marks
+        3. Update Student            8. Record/Update Attendance
+        4. Delete Student            9. Generate Student Performance Report
+        5. Add Course               10. Generate Class Summary Report
+        0. Exit System
+        ----------------------------------------------------------------------""");
+    }
+
+    private static void addStudent() {
+        System.out.print("Enter Registration No (e.g., 25BAI11093): ");
+        String id = scanner.nextLine().trim();
+        if (!InputValidator.isValidId(id)) {
+            System.out.println("[!] Error: Invalid Registration Number pattern.");
+            return;
+        }
+        System.out.print("Enter Full Name: ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Enter Institutional Email: ");
+        String email = scanner.nextLine().trim();
+        if (!InputValidator.isValidEmail(email)) {
+            System.out.println("[!] Error: Invalid email address format.");
+            return;
+        }
+        System.out.print("Enter Academic Branch: ");
+        String branch = scanner.nextLine().trim();
+        System.out.print("Enter Current Semester (1-10): ");
+        try {
+            int sem = Integer.parseInt(scanner.nextLine().trim());
+            if (!InputValidator.isValidSemester(sem)) throw new NumberFormatException();
+            if (studentService.addStudent(new Student(id, name, email, branch, sem))) {
+                System.out.println("[✓] Student enrolled successfully.");
+            } else {
+                System.out.println("[!] Error: Student with ID already exists.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("[!] Error: Invalid semester number.");
+        }
+    }
+
+    private static void listStudents() {
+        List<Student> list = studentService.getAllStudents();
+        System.out.println("\n----------------- REGISTERED STUDENTS -----------------");
+        if (list.isEmpty()) System.out.println("No records found.");
+        for (Student s : list) {
+            System.out.printf("[%s] %s | %s | %s | Sem: %d\n", s.getId(), s.getName(), s.getEmail(), s.getBranch(), s.getSemester());
+        }
+        System.out.println("-------------------------------------------------------");
+    }
+
+    private static void updateStudent() {
+        System.out.print("Enter Student ID to update: ");
+        String id = scanner.nextLine().trim();
+        if (studentService.findStudent(id).isEmpty()) {
+            System.out.println("[!] Student not found.");
+            return;
+        }
+        System.out.print("Enter New Name: ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Enter New Email: ");
+        String email = scanner.nextLine().trim();
+        System.out.print("Enter New Branch: ");
+        String branch = scanner.nextLine().trim();
+        System.out.print("Enter New Semester: ");
+        int sem = 0;
+        try {
+            String semIn = scanner.nextLine().trim();
+            if (!semIn.isBlank()) sem = Integer.parseInt(semIn);
+        } catch (NumberFormatException ignored) {}
+
+        studentService.updateStudent(id, name, email, branch, sem);
+        System.out.println("[✓] Record updated successfully.");
+    }
+
+    private static void deleteStudent() {
+        System.out.print("Enter Student ID to remove: ");
+        String id = scanner.nextLine().trim();
+        if (studentService.deleteStudent(id)) {
+            System.out.println("[✓] Student record removed.");
+        } else {
+            System.out.println("[!] Student record not found.");
+        }
+    }
+
+    private static void addCourse() {
+        System.out.print("Enter Course Code (e.g., CSE1021): ");
+        String code = scanner.nextLine().trim().toUpperCase();
+        System.out.print("Enter Course Name: ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Enter Credits (1-8): ");
+        try {
+            int credits = Integer.parseInt(scanner.nextLine().trim());
+            if (!InputValidator.isValidCredits(credits)) throw new NumberFormatException();
+            if (courseService.addCourse(new Course(code, name, credits))) {
+                System.out.println("[✓] Course registered successfully.");
+            } else {
+                System.out.println("[!] Course code already exists.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("[!] Invalid credit unit entered.");
+        }
+    }
+
+    private static void listCourses() {
+        List<Course> list = courseService.getAllCourses();
+        System.out.println("\n----------------- COURSE CATALOG -----------------");
+        if (list.isEmpty()) System.out.println("No courses registered.");
+        for (Course c : list) {
+            System.out.printf("[%s] %-30s (%d Credits)\n", c.getCode(), c.getName(), c.getCredits());
+        }
+        System.out.println("--------------------------------------------------");
+    }
+
+    private static void recordMarks() {
+        System.out.print("Enter Student ID: ");
+        String id = scanner.nextLine().trim();
+        if (studentService.findStudent(id).isEmpty()) {
+            System.out.println("[!] Student ID not found.");
+            return;
+        }
+        System.out.print("Enter Course Code: ");
+        String code = scanner.nextLine().trim().toUpperCase();
+        if (courseService.findCourse(code).isEmpty()) {
+            System.out.println("[!] Course Code not found.");
+            return;
+        }
+        System.out.print("Enter Marks (0 - 100): ");
+        try {
+            double marks = Double.parseDouble(scanner.nextLine().trim());
+            if (!InputValidator.isValidMarks(marks)) {
+                System.out.println("[!] Marks must be 0.0 - 100.0.");
+                return;
+            }
+            academicService.recordMarks(id, code, marks);
+            System.out.println("[✓] Marks saved.");
+        } catch (NumberFormatException e) {
+            System.out.println("[!] Invalid format.");
+        }
+    }
+
+    private static void recordAttendance() {
+        System.out.print("Enter Student ID: ");
+        String id = scanner.nextLine().trim();
+        if (studentService.findStudent(id).isEmpty()) {
+            System.out.println("[!] Student ID not found.");
+            return;
+        }
+        System.out.print("Enter Course Code: ");
+        String code = scanner.nextLine().trim().toUpperCase();
+        if (courseService.findCourse(code).isEmpty()) {
+            System.out.println("[!] Course Code not found.");
+            return;
+        }
+        try {
+            System.out.print("Enter Attended Classes: ");
+            int attended = Integer.parseInt(scanner.nextLine().trim());
+            System.out.print("Enter Total Classes Conducted: ");
+            int total = Integer.parseInt(scanner.nextLine().trim());
+
+            if (!InputValidator.isValidAttendance(attended, total)) {
+                System.out.println("[!] Attended must be <= Total and non-negative.");
+                return;
+            }
+            academicService.recordAttendance(id, code, attended, total);
+            System.out.println("[✓] Attendance logged.");
+        } catch (NumberFormatException e) {
+            System.out.println("[!] Invalid number.");
+        }
+    }
+
+    private static void generateReport() {
+        System.out.print("Enter Student ID: ");
+        String id = scanner.nextLine().trim();
+        reportService.printStudentReport(id);
+    }
+}
+"@ | Out-File -Encoding utf8 -FilePath "src\main\java\com\vit\smartstudent\Main.java"
+
+Write-Host "Writing pom.xml and cleaning up filenames..." -ForegroundColor Cyan
+@"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.vit.smartstudent</groupId>
+    <artifactId>smart-student-performance-manager</artifactId>
+    <version>1.0.0</version>
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.jupiter.version>5.10.2</junit.jupiter.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>`${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>`${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
+"@ | Out-File -Encoding utf8 -FilePath "pom.xml"
+
+# Remove duplicate artifacts
+Remove-Item -Force -ErrorAction SilentlyContinue "pom[1].xml", "statement[1].md", ".gitignore[1].gitignore", "twice_read2", "sspm_code.sh", "sspm_codez_2.sh"
+
+Write-Host "Staging and pushing changes to GitHub..." -ForegroundColor Green
+git add src data pom.xml
+git commit -m "feat: setup complete Java 17 source tree and data files"
+git push origin main
+Write-Host "Completed! Refresh your GitHub page." -ForegroundColor Green
